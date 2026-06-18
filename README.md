@@ -4,8 +4,12 @@ Download album from YouTube album and automatically split them into Opus files w
 # Prerequisites
 
 * ffmpeg
-* opustags
-* yt-dlp
+
+Install dependencies:
+
+```
+pip install -r requirements.txt
+```
 
 # Usage
 

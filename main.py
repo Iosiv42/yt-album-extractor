@@ -4,6 +4,11 @@ import ffmpeg
 import argparse
 import math
 import os
+from mutagen.oggopus import OggOpus
+from mutagen.flac import Picture
+from mutagen import id3
+from PIL import Image
+import base64
 
 
 def get_tracklist(tracklist_str):
@@ -11,6 +16,44 @@ def get_tracklist(tracklist_str):
     tracklist = [line.split(" ", maxsplit=1) for line in tracklist]
     tracklist = [(e1.strip(), e2.strip()) for e1, e2 in tracklist]
     return tuple(tracklist)
+
+
+def set_cover(cover_filename, ogg_opus):
+    """
+        This function doesn't saves ogg_opus
+    """
+
+    with open(cover_filename, "rb") as cf:
+        data = cf.read()
+
+    cover = Picture()
+    cover.data = data
+
+    with Image.open(cover_filename) as im:
+        cover.type = id3.PictureType.COVER_FRONT
+        cover.width = im.width
+        cover.height = im.height
+        
+        match im.mode:
+            case "1":
+                cover.depth = 1
+            case "L" | "P" | "":
+                cover.depth = 8
+            case "RGB" | "YCbCr" | "LAB" | "HSV":
+                cover.depth = 24
+            case "RGBA" | "CMYK" | "I" | "F":
+                cover.depth = 32
+            case _:
+                raise RuntimeError(f"Cannot find bit depth for {im.mode} mode")
+            
+        # Not tested !!! TODO
+        cover.mime = f"image/{im.format}"
+
+    cover_data = cover.write()
+    encoded_data = base64.b64encode(cover_data)
+    vcomment_value = encoded_data.decode("ascii")
+
+    ogg_opus["metadata_block_picture"] = [vcomment_value]
 
 
 if __name__ == "__main__":
@@ -29,7 +72,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    with yt_dlp.YoutubeDL() as ydl:
+    ydl_opts = {
+        "format": "bestaudio/best"
+    }
+    
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info_dict = ydl.extract_info(args.url, download=False)
         video_filename = ydl.prepare_filename(info_dict)
 
@@ -57,35 +104,31 @@ if __name__ == "__main__":
 
         ffmpeg.run(stream)
 
-        tags = {
-            "TRACKNUMBER": track_no,
+        track_audio = OggOpus(track_filename)
+
+        track_audio.update({
+            "TRACKNUMBER": str(track_no),
+            "TOTALTRACKS": str(len(tracklist)),
             "TITLE": track_name,
-        }
+        })
 
         if args.album_title is not None:
-            tags["ALBUM"] = args.album_title
+            track_audio["ALBUM"] = args.album_title
 
         if args.artist is not None:
-            tags["ARITST"] = args.artist
+            track_audio["ARTIST"] = args.artist
             if args.album_artist is None:
-                tags["ALBUMARTIST"] = args.artist
+                track_audio["ALBUMARTIST"] = args.artist
             else:
-                tags["ALBUMARTIST"] = args.album_artist
+                track_audio["ALBUMARTIST"] = args.album_artist
 
         if args.date is not None:
-            tags["DATE"] = args.date
+            track_audio["DATE"] = str(args.date)
 
         if args.genre is not None:
-            tags["GENRE"] = args.genre
-
-        opustags_args = [
-            "opustags", "-i",
-            *(item for k, v in tags.items() for item in ("--set", f"{k}={v}")),
-        ]
+            track_audio["GENRE"] = args.genre
 
         if args.cover is not None:
-            opustags_args.extend(("--set-cover", args.cover))
+            set_cover(args.cover, track_audio)
 
-        opustags_args.append(track_filename)
-
-        subprocess.run(opustags_args)
+        track_audio.save()

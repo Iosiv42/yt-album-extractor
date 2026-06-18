@@ -1,0 +1,4 @@
+ffmpeg-python==0.2.0
+yt-dlp==2026.6.9
+pillow==12.2.0
+mutagen==1.47.0
