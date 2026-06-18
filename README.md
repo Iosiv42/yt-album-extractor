@@ -11,6 +11,12 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+# Installation
+
+```
+pip install .
+```
+
 # Usage
 
 Now, only extracting from videos (like ones that has "FULL ALBUM", etc. in title) is working.

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yt-album-extractor"
+version = "0.0.2"
+dependencies = [
+    "ffmpeg-python==0.2.0",
+    "yt-dlp==2026.6.9",
+    "pillow==12.2.0",
+    "mutagen==1.47.0",
+]
+requires-python = ">= 3.10"
+authors = [
+    {name = "Ilya Osipov", email = "osil06738@gmail.com"},
+]
+description = "Download album from YouTube, slice it by episodes, add tags to them, and store it in your library"
+readme = "README.md"
+
+[project.scripts]
+yt-album-extractor = "yt_album_extractor.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yt_album_extractor"]

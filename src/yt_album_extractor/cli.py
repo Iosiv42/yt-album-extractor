@@ -13,7 +13,7 @@ import base64
 
 def get_tracklist(tracklist_str):
     tracklist = tracklist_str.split("\n")
-    tracklist = [line.split(" ", maxsplit=1) for line in tracklist]
+    tracklist = [line.strip().split(" ", maxsplit=1) for line in tracklist]
     tracklist = [(e1.strip(), e2.strip()) for e1, e2 in tracklist]
     return tuple(tracklist)
 
@@ -56,7 +56,7 @@ def set_cover(cover_filename, ogg_opus):
     ogg_opus["metadata_block_picture"] = [vcomment_value]
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(
         prog="YTAlbumExtracter"
     )
@@ -69,6 +69,10 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--date", type=int)
     parser.add_argument("-c", "--cover")
     parser.add_argument("-g", "--genre")
+    parser.add_argument(
+        "-k", "--keep-source",
+        action="store_true", default=False,
+    )
 
     args = parser.parse_args()
 
@@ -78,15 +82,16 @@ if __name__ == "__main__":
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info_dict = ydl.extract_info(args.url, download=False)
-        video_filename = ydl.prepare_filename(info_dict)
+        source_filename = ydl.prepare_filename(info_dict)
 
-        if not os.path.isfile(video_filename):
+        if not os.path.isfile(source_filename):
             ydl.download(args.url)
 
     tracklist = get_tracklist(args.tracklist)
     track_no_pad = math.floor(math.log10(len(tracklist))) + 1
     for track_no, (track_start, track_name) in enumerate(tracklist, 1):
-        stream = ffmpeg.input(video_filename)
+        # Slice current track from source
+        stream = ffmpeg.input(source_filename)
 
         track_filename = f"{track_no:0>{track_no_pad}} - {track_name}.opus"
         stream = stream.output(
@@ -104,6 +109,7 @@ if __name__ == "__main__":
 
         ffmpeg.run(stream)
 
+        # Tag the track's audio file
         track_audio = OggOpus(track_filename)
 
         track_audio.update({
@@ -132,3 +138,10 @@ if __name__ == "__main__":
             set_cover(args.cover, track_audio)
 
         track_audio.save()
+
+    if not args.keep_source:
+        os.remove(source_filename)
+
+
+if __name__ == "__main__":
+    main()
