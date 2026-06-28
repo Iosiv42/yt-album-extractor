@@ -32,6 +32,12 @@ and optional album name, artist name, album date, and cover file. If you do not 
 arguments, there will be no tags in resulting track files and as consequence will not be organized
 in your collection.
 
+You can also pass additional arguments for `yt-dlp` using `--yt-dlp-args ARGS` argumet. For example, to pass cookies:
+
+```
+--yt-dlp-args "--cookies cookies.txt"
+```
+
 Then pass these arguments to the script:
 
 ```
